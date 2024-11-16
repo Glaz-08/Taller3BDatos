@@ -1,0 +1,22 @@
+
+Integrantes:
+Manuel Jerez
+manuel.jerez@alumnos.ucn.cl
+
+Matias navia
+matias.navia@alumnos.ucn.cl
+
+Ejecucion:
+Paso 1
+javac -d bin -cp "lib/postgresql-42.7.4.jar" src/main.java sql/*.java
+paso 2
+java -cp "bin;lib/postgresql-42.7.4.jar" src.main
+
+
+DATOS ADMINISTRADORES 
+'admin', 'Administrador', '0000000000', 'skibidi', 'toilet'
+
+
+
+
+
