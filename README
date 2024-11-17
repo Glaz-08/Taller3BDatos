@@ -11,11 +11,22 @@ Paso 1
 javac -d bin -cp "lib/postgresql-42.7.4.jar" src/main.java sql/*.java
 paso 2
 java -cp "bin;lib/postgresql-42.7.4.jar" src.main
+IMPORTANTE:
+Cuando vayas a ejecutar el codigo avisa a matias o a manuel, ya que esta abse de datos esta hecha con docker
+por lo que para que pueda hacerse la ejecucion, debe de estar corriendo el docker........
 
+en la seccion de crear al crear un usuario cliente o administrador, lo crea y cierra el programa, pero cuando lo vuelvas a iniciar
+ese cliente o administrador ya estara guardado en la base de datos. por lo que es accecible en cualquier ejecucion del programa.
 
-DATOS ADMINISTRADORES 
+--DATOS ADMINISTRADORES-- 
 'admin', 'Administrador', '0000000000', 'skibidi', 'toilet'
-
+--Datos Clientes--
+Cuenta para Carlos Pérez con actividad reciente
+Id cliente: 1, Saldo: 1000.00, fecha de creacion: '2023-11-01'
+Cuenta para María López cuenta inactiva
+Id cliente: 2, saldo: 500.00,fecha creacion:  '2023-09-01'
+Cuenta para Juan García
+id cliente:3, saldo: 3000.00, fecha creacion:'2023-10-01'
 
 
 
