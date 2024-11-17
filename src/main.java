@@ -72,31 +72,54 @@ public class main {
 
     private static void mostrarMenuCliente(Scanner scanner, dataSQL data) {
         boolean salir = false;
+    
         while (!salir) {
-            System.out.println("Menú Cliente:");
+            System.out.println("\nMenú Cliente:");
             System.out.println("1. Realizar Depósito");
             System.out.println("2. Realizar Retiro");
             System.out.println("3. Transferencia");
             System.out.println("4. Consultar Saldo");
             System.out.println("5. Salir");
             System.out.print("Seleccione una opción: ");
-            int opcion = scanner.nextInt();
+    
+            int opcion;
+            try {
+                opcion = scanner.nextInt();
+            } catch (Exception e) {
+                System.out.println("Por favor, ingrese un número válido.");
+                scanner.nextLine(); // Limpiar entrada
+                continue;
+            }
     
             switch (opcion) {
                 case 1:
                     System.out.println("Ingrese la cantidad a depositar: ");
                     double deposito = scanner.nextDouble();
+                    if (deposito <= 0) {
+                        System.out.println("El monto a depositar debe ser positivo.");
+                        break;
+                    }
                     System.out.println("Ingrese el ID de su cuenta: ");
                     int idCuentaDep = scanner.nextInt();
                     data.realizarDeposito(idCuentaDep, deposito);
                     break;
+    
                 case 2:
                     System.out.println("Ingrese la cantidad a retirar: ");
                     double retiro = scanner.nextDouble();
+                    if (retiro <= 0) {
+                        System.out.println("El monto a retirar debe ser positivo.");
+                        break;
+                    }
                     System.out.println("Ingrese el ID de su cuenta: ");
                     int idCuentaRet = scanner.nextInt();
-                    data.realizarRetiro(idCuentaRet, retiro);
+                    if (!data.verificarSaldoDisponible(idCuentaRet, retiro)) {
+                        System.out.println("Saldo insuficiente para realizar el retiro.");
+                    } else {
+                        data.realizarRetiro(idCuentaRet, retiro);
+                    }
                     break;
+    
                 case 3:
                     System.out.println("Ingrese el ID de la cuenta origen: ");
                     int idCuentaOrigen = scanner.nextInt();
@@ -104,22 +127,32 @@ public class main {
                     int idCuentaDestino = scanner.nextInt();
                     System.out.println("Ingrese el monto a transferir: ");
                     double montoTransferencia = scanner.nextDouble();
-                    data.realizarTransferencia(idCuentaOrigen, idCuentaDestino, montoTransferencia);
+                    if (montoTransferencia <= 0) {
+                        System.out.println("El monto de transferencia debe ser positivo.");
+                    } else if (!data.verificarSaldoDisponible(idCuentaOrigen, montoTransferencia)) {
+                        System.out.println("Saldo insuficiente para realizar la transferencia.");
+                    } else {
+                        data.realizarTransferencia(idCuentaOrigen, idCuentaDestino, montoTransferencia);
+                    }
                     break;
+    
                 case 4:
                     System.out.println("Ingrese el ID de su cuenta: ");
                     int idCuentaSaldo = scanner.nextInt();
                     data.consultarSaldo(idCuentaSaldo);
                     break;
+    
                 case 5:
-                    salir = true; // Termina el bucle
+                    salir = true; // Salir del bucle
                     System.out.println("Saliendo del Menú Cliente...");
                     break;
+    
                 default:
-                    System.out.println("Opción no válida.");
+                    System.out.println("Opción no válida. Por favor seleccione una opción del menú.");
             }
         }
     }
+    
     
     private static void mostrarMenuAdministrador(Scanner scanner, dataSQL data) {
         boolean salir = false;

@@ -33,24 +33,55 @@ public class dataSQL {
     }
     
 
-    // Registrar un usuario
     public boolean registrarUsuario(String nombre, String contraseña, String rol) {
-        String query = "INSERT INTO cliente (nombre, direccion, telefono, email, contraseña) VALUES (?, ?, NULL, ?, ?)";
-        try (Connection connection = DatabaseConnection.getConnection();
-             PreparedStatement statement = connection.prepareStatement(query)) {
+        String insertarCliente = "INSERT INTO cliente (nombre, direccion, telefono, email, contraseña) VALUES (?, ?, NULL, ?, ?)";
+        String obtenerIdCliente = "SELECT id_cliente FROM cliente WHERE email = ?";
+        String insertarCuenta = "INSERT INTO cuenta (id_cliente, saldo, fecha_creacion) VALUES (?, 0.00, NOW())";
     
-            statement.setString(1, nombre);
-            statement.setString(2, "Usuario por defecto"); // O un valor real para la dirección
-            statement.setString(3,nombre); 
-            statement.setString(4, contraseña);
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
     
-            int rowsInserted = statement.executeUpdate();
-            return rowsInserted > 0;
+            // Insertar nuevo cliente
+            try (PreparedStatement statementCliente = connection.prepareStatement(insertarCliente)) {
+                statementCliente.setString(1, nombre);
+                statementCliente.setString(2, "Usuario por defecto"); // Dirección por defecto
+                statementCliente.setString(3, nombre); // Email 
+                statementCliente.setString(4, contraseña);
+    
+                int rowsInserted = statementCliente.executeUpdate();
+                if (rowsInserted <= 0) {
+                    connection.rollback();
+                    return false;
+                }
+            }
+    
+            // Obtener el ID del cliente recién creado
+            int idCliente;
+            try (PreparedStatement statementId = connection.prepareStatement(obtenerIdCliente)) {
+                statementId.setString(1, nombre);
+                ResultSet resultSet = statementId.executeQuery();
+                if (resultSet.next()) {
+                    idCliente = resultSet.getInt("id_cliente");
+                } else {
+                    connection.rollback();
+                    return false;
+                }
+            }
+    
+            // Crear cuenta para el cliente con saldo inicial de 0
+            try (PreparedStatement statementCuenta = connection.prepareStatement(insertarCuenta)) {
+                statementCuenta.setInt(1, idCliente);
+                statementCuenta.executeUpdate();
+            }
+    
+            connection.commit();
+            return true;
         } catch (SQLException e) {
             System.err.println("Error al registrar usuario: " + e.getMessage());
         }
         return false;
     }
+    
     
 
     // Realizar un depósito
@@ -90,69 +121,82 @@ public class dataSQL {
         }
     }
 
-    // Realizar una transferencia
     public void realizarTransferencia(int idCuentaOrigen, int idCuentaDestino, double monto) {
+        if (idCuentaOrigen == idCuentaDestino) {
+            System.out.println("No se puede realizar una transferencia a la misma cuenta.");
+            return;
+        }
+    
+        if (monto <= 0) {
+            System.out.println("El monto de transferencia debe ser positivo.");
+            return;
+        }
+    
         String verificarSaldo = "SELECT saldo FROM cuenta WHERE id_cuenta = ?";
         String actualizarOrigen = "UPDATE cuenta SET saldo = saldo - ? WHERE id_cuenta = ?";
         String actualizarDestino = "UPDATE cuenta SET saldo = saldo + ? WHERE id_cuenta = ?";
         String registrarTransferencia = "INSERT INTO transferencia (id_cuenta_origen, id_cuenta_destino, monto_transferencia, fecha_transferencia) VALUES (?, ?, ?, NOW())";
-
+    
         try (Connection connection = DatabaseConnection.getConnection()) {
             connection.setAutoCommit(false);
-
-            // Verificar saldo
+    
+            // Verificar saldo de la cuenta origen
+            double saldo;
             try (PreparedStatement verificarStmt = connection.prepareStatement(verificarSaldo)) {
                 verificarStmt.setInt(1, idCuentaOrigen);
                 ResultSet resultSet = verificarStmt.executeQuery();
                 if (resultSet.next()) {
-                    double saldo = resultSet.getDouble("saldo");
+                    saldo = resultSet.getDouble("saldo");
                     if (saldo < monto) {
-                        System.out.println("Saldo insuficiente.");
+                        System.out.println("Saldo insuficiente para realizar la transferencia.");
+                        connection.rollback();
                         return;
                     }
                 } else {
                     System.out.println("Cuenta origen no encontrada.");
+                    connection.rollback();
                     return;
                 }
             }
-
-            // Actualizar saldo cuenta origen
+    
+            // Actualizar saldo en la cuenta origen
             try (PreparedStatement origenStmt = connection.prepareStatement(actualizarOrigen)) {
                 origenStmt.setDouble(1, monto);
                 origenStmt.setInt(2, idCuentaOrigen);
                 origenStmt.executeUpdate();
             }
-
-            // Actualizar saldo cuenta destino
+    
+            // Actualizar saldo en la cuenta destino
             try (PreparedStatement destinoStmt = connection.prepareStatement(actualizarDestino)) {
                 destinoStmt.setDouble(1, monto);
                 destinoStmt.setInt(2, idCuentaDestino);
                 destinoStmt.executeUpdate();
             }
-
-            // Registrar transferencia
+    
+            // Registrar la transferencia
             try (PreparedStatement registrarStmt = connection.prepareStatement(registrarTransferencia)) {
                 registrarStmt.setInt(1, idCuentaOrigen);
                 registrarStmt.setInt(2, idCuentaDestino);
                 registrarStmt.setDouble(3, monto);
                 registrarStmt.executeUpdate();
             }
-
+    
             connection.commit();
             System.out.println("Transferencia realizada exitosamente.");
         } catch (SQLException e) {
             System.err.println("Error al realizar transferencia: " + e.getMessage());
         }
     }
+    
 
-    // Consultar saldo
     public void consultarSaldo(int idCuenta) {
         String query = "SELECT saldo FROM cuenta WHERE id_cuenta = ?";
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(query)) {
-
+    
             statement.setInt(1, idCuenta);
             ResultSet resultSet = statement.executeQuery();
+    
             if (resultSet.next()) {
                 double saldo = resultSet.getDouble("saldo");
                 System.out.println("Saldo actual: " + saldo);
@@ -314,6 +358,26 @@ public void eliminarUsuario(int idUsuario) {
     } catch (SQLException e) {
         System.err.println("Error al eliminar usuario: " + e.getMessage());
     }
+}
+
+public boolean verificarSaldoDisponible(int idCuenta, double monto) {
+    String query = "SELECT saldo FROM cuenta WHERE id_cuenta = ?";
+    try (Connection connection = DatabaseConnection.getConnection();
+         PreparedStatement statement = connection.prepareStatement(query)) {
+
+        statement.setInt(1, idCuenta);
+        ResultSet resultSet = statement.executeQuery();
+
+        if (resultSet.next()) {
+            double saldo = resultSet.getDouble("saldo");
+            return saldo >= monto; // Verificar si el saldo es suficiente
+        } else {
+            System.out.println("Cuenta no encontrada.");
+        }
+    } catch (SQLException e) {
+        System.err.println("Error al verificar saldo: " + e.getMessage());
+    }
+    return false;
 }
 
 }
